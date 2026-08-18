@@ -60,7 +60,7 @@ Administrative functions are restricted from Cashier users.
 These accounts are for portfolio demonstration only.
 
 **Admin**
-- Username: dmin
+- Username: admin
 - Password: Admin2026!
 
 **Cashier**
@@ -76,3 +76,4 @@ This project was developed as a practical inventory and POS application demonstr
 **Jefrey Cervera**
 
 GitHub: https://github.com/jepox27
+
