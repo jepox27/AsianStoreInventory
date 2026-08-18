@@ -4,29 +4,30 @@ A web-based inventory and point-of-sale (POS) system built with **C#**, **.NET**
 
 ## Features
 
-- ?? Role-based Admin and Cashier login
-- ?? Product and inventory management
-- ?? Shopping cart and checkout
-- ?? Cash payment and change calculation
-- ?? Receipt generation and printing
-- ?? Sales history and sales totals
-- ?? Top sellers
-- ?? Low-stock and out-of-stock alerts
-- ?? Database backup and restore
-- ?? Product search and barcode support
-- ?? Admin/Cashier permissions
+- Role-based Admin and Cashier login
+- Product and inventory management
+- Shopping cart and checkout
+- Cash payment and change calculation
+- Receipt generation and printing
+- Sales history and sales totals
+- Top sellers
+- Low-stock and out-of-stock alerts
+- Database backup and restore
+- Product search and barcode support
+- Admin/Cashier permissions
 
 ## User Roles
 
 ### Admin
-Administrators can manage inventory and access administrative functions such as:
+
+Administrators can:
 
 - Add products
 - Edit products
 - Delete products
 - View sales information
-- Backup database
-- Restore database
+- Backup the database
+- Restore the database
 - Clear sales history
 
 ### Cashier
@@ -68,11 +69,10 @@ These accounts are for portfolio demonstration only.
 
 ## Project Purpose
 
-This project was developed as a practical inventory and POS application demonstrating software development, database management, authentication, role-based access control, CRUD operations, sales processing, and backup/restore functionality.
+This project was developed as a practical inventory and POS application demonstrating software development, database management, authentication, role-based access control, CRUD operations, sales processing, and database backup/restore functionality.
 
 ## Author
 
 **Jefrey Cervera**
 
 GitHub: https://github.com/jepox27
-
