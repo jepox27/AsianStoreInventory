@@ -1,0 +1,118 @@
+﻿@page "/login"
+@rendermode InteractiveServer
+
+@using AsianStoreInventory.Data
+@using AsianStoreInventory.Models
+@using Microsoft.EntityFrameworkCore
+
+@inject AppDbContext db
+@inject NavigationManager Navigation
+
+<h1>Asian Store Login</h1>
+
+<br />
+
+<div style="
+    background-color:white;
+    padding:30px;
+    width:350px;
+    border-radius:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+
+    <input @bind="username"
+           @onkeyup="HandleEnter"
+           placeholder="Username"
+           style="width:100%; margin-bottom:15px;" />
+
+    <input @bind="password"
+           @onkeyup="HandleEnter"
+           type="password"
+           placeholder="Password"
+           style="width:100%; margin-bottom:15px;" />
+
+    <button @onclick="LoginUser"
+            style="width:100%;">
+        Login
+    </button>
+
+    <br />
+    <br />
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color:red;">
+            @errorMessage
+        </p>
+    }
+
+</div>
+
+<br />
+
+<div class="dashboard-card"
+     style="max-width:350px;">
+
+    <h3>Demo Accounts</h3>
+
+    <p>
+        <strong>Admin</strong><br />
+        Username: <code>admin</code><br />
+        Password: <code>Admin2026!</code>
+    </p>
+
+    <hr />
+
+    <p>
+        <strong>Cashier</strong><br />
+        Username: <code>cashier</code><br />
+        Password: <code>Cashier2026!</code>
+    </p>
+
+    <small>
+        These accounts are for portfolio demonstration only.
+    </small>
+
+    
+</div>
+
+@code {
+
+    string username = "";
+
+    string password = "";
+
+    string errorMessage = "";
+
+
+    async Task LoginUser()
+    {
+        errorMessage = "";
+
+        var user = await db.Users
+            .FirstOrDefaultAsync(u =>
+                u.Username == username &&
+                u.Password == password);
+
+        if (user != null)
+        {
+            UserSession.Role = user.Role;
+
+            UserSession.IsLoggedIn = true;
+
+            Navigation.NavigateTo("/products");
+        }
+        else
+        {
+            errorMessage = "Invalid username or password";
+        }
+    }
+
+
+    async Task HandleEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await LoginUser();
+        }
+    }
+}

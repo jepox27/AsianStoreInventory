@@ -1,0 +1,180 @@
+﻿@page "/dashboard"
+@rendermode InteractiveServer
+
+@using AsianStoreInventory.Data
+@using AsianStoreInventory.Models
+
+@inject AppDbContext db
+@inject NavigationManager Navigation
+
+<h1>Store Dashboard</h1>
+
+<div style="margin-bottom:20px;">
+
+    <button @onclick="GoToProducts">
+        Products
+    </button>
+
+    <button @onclick="Logout">
+        Logout
+    </button>
+
+</div>
+
+<br />
+
+<div style="display:flex;
+    gap:20px;
+    flex-wrap:wrap;
+    margin-bottom:20px;">
+
+    <div class="dashboard-card">
+        <h3>Total Sales</h3>
+        <h1>@TotalSales€</h1>
+    </div>
+
+    <div class="dashboard-card">
+        <h3>Total Products</h3>
+        <h1>@TotalProducts</h1>
+    </div>
+
+    <div class="dashboard-card">
+        <h3>Inventory Value</h3>
+        <h1>@InventoryValue€</h1>
+    </div>
+
+    <div class="dashboard-card">
+        <h3>Low Stock</h3>
+        <h1>@LowStockCount</h1>
+    </div>
+
+</div>
+
+<div class="dashboard-card">
+
+    <h2>📈 Sales Overview</h2>
+
+    <div style="display:flex;
+        align-items:flex-end;
+        gap:20px;
+        height:250px;
+        margin-top:30px;">
+
+        @foreach (var item in TopSellingProducts)
+        {
+            <div style="text-align:center;">
+
+                <div style="
+                    background-color:#2563eb;
+                    width:60px;
+                    height:@(item.TotalSold * 20)px;
+                    border-radius:10px 10px 0 0;">
+                </div>
+
+                <p>@item.ProductName</p>
+
+                <strong>@item.TotalSold</strong>
+
+            </div>
+        }
+
+    </div>
+
+</div>
+
+<br />
+
+<div class="dashboard-card">
+
+    <h2>🏆 Best Selling Products</h2>
+
+    <table border="1"
+           cellpadding="10"
+           style="border-collapse:collapse;
+        width:100%;">
+
+        <tr style="background-color:lightgray;">
+            <th>Product</th>
+            <th>Qty Sold</th>
+        </tr>
+
+        @foreach (var item in TopSellingProducts)
+        {
+            <tr>
+                <td>@item.ProductName</td>
+                <td>@item.TotalSold</td>
+            </tr>
+        }
+
+    </table>
+
+</div>
+
+@code {
+
+    decimal TotalSales = 0;
+
+    int TotalProducts = 0;
+
+    decimal InventoryValue = 0;
+
+    int LowStockCount = 0;
+
+    List<TopSeller> TopSellingProducts = new();
+
+    protected override void OnInitialized()
+    {
+        if (!UserSession.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+
+            return;
+        }
+
+        var products = db.Products.ToList();
+
+        var sales = db.Sales.ToList();
+
+        TotalSales = sales.Sum(s => s.Total);
+
+        TotalProducts = products.Count;
+
+        InventoryValue =
+            products.Sum(p => p.Price * p.Quantity);
+
+        LowStockCount =
+            products.Count(p => p.Quantity <= 5);
+
+        TopSellingProducts =
+            sales
+                .GroupBy(s => s.ProductName)
+                .Select(g => new TopSeller
+                {
+                    ProductName = g.Key,
+                    TotalSold = g.Sum(x => x.Quantity)
+                })
+                .OrderByDescending(x => x.TotalSold)
+                .Take(5)
+                .ToList();
+    }
+
+    void GoToProducts()
+    {
+        Navigation.NavigateTo("/products");
+    }
+
+    void Logout()
+    {
+        UserSession.Role = "";
+        UserSession.IsLoggedIn = false;
+
+        Navigation.NavigateTo("/login", true);
+    }
+
+    class TopSeller
+    {
+        public string ProductName { get; set; } = "";
+
+        public int TotalSold { get; set; }
+    }
+}

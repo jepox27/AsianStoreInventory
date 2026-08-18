@@ -1,0 +1,835 @@
+﻿@using AsianStoreInventory.Data
+@using AsianStoreInventory.Models
+@using System.IO
+
+@inject AppDbContext db
+@inject NavigationManager Navigation
+
+@page "/products"
+@rendermode InteractiveServer
+
+<style>
+    @@media print {
+
+        body * {
+            visibility: hidden;
+        }
+
+        .receipt-print-area,
+        .receipt-print-area * {
+            visibility: visible;
+        }
+
+        .receipt-print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 80mm;
+            margin: 0;
+            padding: 5mm;
+            box-shadow: none !important;
+        }
+    }
+</style>
+
+
+<div style="margin-bottom:20px;">
+
+    <button @onclick="GoToDashboard">
+        Dashboard
+    </button>
+
+    <button @onclick="Logout">
+        Logout
+    </button>
+
+</div>
+
+<input @bind="searchText"
+       @bind:event="oninput"
+       placeholder="Search Product or Barcode" />
+
+<button @onclick="ScanBarcode">
+    Scan
+</button>
+
+<br />
+<br />
+
+<div style="display:flex; gap:10px; flex-wrap:wrap;">
+
+    <input @bind="productName"
+           placeholder="Product Name" />
+
+    <input @bind="category"
+           placeholder="Category" />
+
+    <input @bind="barcode"
+           placeholder="Barcode" />
+
+    <input @bind="supplier"
+           placeholder="Supplier" />
+
+    <input @bind="quantity"
+           type="number"
+           placeholder="Quantity" />
+
+    <input @bind="price"
+           type="number"
+           step="0.01"
+           placeholder="Price" />
+
+    @if (UserRole == "Admin")
+    {
+        <button @onclick="AddOrUpdateProduct">
+            @(isEditing ? "Update Product" : "Add Product")
+        </button>
+    }
+
+</div>
+
+<br />
+
+<div style="display:flex;
+    gap:20px;
+    flex-wrap:wrap;
+    margin-bottom:20px;">
+
+    <div class="dashboard-card">
+        <h3>Total Products</h3>
+        <h1>@filteredProducts.Count</h1>
+    </div>
+
+    <div class="dashboard-card">
+        <h3>Inventory Value</h3>
+        <h1>@TotalInventoryValue€</h1>
+    </div>
+
+    <div class="dashboard-card">
+        <h3>Total Sales</h3>
+        <h1>@TotalSales€</h1>
+    </div>
+
+</div>
+
+<div class="dashboard-card sales-panel">
+
+    <h3>📅 TODAY'S SALES</h3>
+
+    <p>Transactions: @TodaySalesCount</p>
+
+    <p>Revenue: @TodayRevenue€</p>
+
+</div>
+
+<div class="dashboard-card top-panel">
+
+    <h3>🏆 TOP SELLERS</h3>
+
+    @foreach (var top in TopSellingProducts)
+    {
+        <p>
+            @top.ProductName — Sold @top.TotalSold
+        </p>
+    }
+
+</div>
+
+@if (products.Any(p => p.Quantity <= 5))
+{
+    <div class="dashboard-card alert-panel">
+
+        <h3>⚠ LOW STOCK ALERT</h3>
+
+        @foreach (var low in products.Where(p => p.Quantity <= 5))
+        {
+            <p>
+                @low.Name — @low.Quantity left
+            </p>
+        }
+
+    </div>
+}
+
+<table border="1"
+       cellpadding="10"
+       style="border-collapse:collapse;
+    width:100%;">
+
+    <tr style="background-color:lightgray;">
+
+        <th>Product</th>
+        <th>Category</th>
+        <th>Barcode</th>
+        <th>Supplier</th>
+        <th>Stock</th>
+        <th>Price</th>
+        <th>Status</th>
+        <th>Sell Qty</th>
+        <th>Action</th>
+
+    </tr>
+
+    @foreach (var item in filteredProducts)
+    {
+        <tr style="@(
+            item.Quantity == 0
+                ? "background-color:#ff9999;"
+                : item.Quantity <= 5
+                    ? "background-color:#fff3cd;"
+                    : ""
+        )">
+
+            <td>@item.Name</td>
+
+            <td>@item.Category</td>
+
+            <td>@item.Barcode</td>
+
+            <td>@item.Supplier</td>
+
+            <td>@item.Quantity</td>
+
+            <td>@item.Price€</td>
+
+            <td>
+                @(item.Quantity == 0
+                    ? "OUT OF STOCK"
+                    : item.Quantity <= 5
+                        ? "LOW STOCK"
+                        : "OK")
+            </td>
+
+            <td>
+
+                <input type="number"
+                       min="1"
+                       style="width:70px;"
+                       @bind="item.SellQuantity" />
+
+            </td>
+
+            <td>
+
+                @if (item.Quantity == 0)
+                {
+                    <button disabled
+                            style="background-color:gray;">
+                        Out Of Stock
+                    </button>
+                }
+                else
+                {
+                    <button @onclick="() => AddToCart(item)">
+                        Add To Cart
+                    </button>
+                }
+
+                @if (UserRole == "Admin")
+                {
+                    <button @onclick="() => EditProduct(item)">
+                        Edit
+                    </button>
+
+                    <button @onclick="() => RemoveProduct(item)">
+                        Delete
+                    </button>
+                }
+
+            </td>
+
+        </tr>
+    }
+
+</table>
+
+<br />
+
+<h2>Shopping Cart</h2>
+
+<table border="1"
+       cellpadding="10"
+       style="border-collapse:collapse;
+    width:100%;">
+
+    <tr style="background-color: lightblue;">
+        <th>Product</th>
+        <th>Qty</th>
+        <th>Price</th>
+        <th>Total</th>
+        <th>Action</th>
+    </tr>
+
+    @foreach (var cart in cartItems)
+    {
+        <tr>
+            <td>@cart.ProductName</td>
+            <td>@cart.Quantity</td>
+            <td>@cart.Price€</td>
+            <td>@(cart.Price * cart.Quantity)€</td>
+
+            <td>
+                <button @onclick="() => RemoveFromCart(cart)">
+                    Remove
+                </button>
+            </td>
+        </tr>
+    }
+
+</table>
+
+<br />
+
+<h2>Cart Total: @CartTotal€</h2>
+
+<br />
+
+<input @bind="CashReceived"
+       type="number"
+       step="0.01"
+       placeholder="Cash Received" />
+
+<h3>
+    Change: @ChangeAmount€
+</h3>
+
+<button @onclick="Checkout">
+    Checkout
+</button>
+
+<button @onclick="ClearCart">
+    Clear Cart
+</button>
+
+<br />
+<br />
+
+@if (UserRole == "Admin")
+{
+    <button @onclick="BackupDatabase">
+        Backup Database
+    </button>
+
+    <button @onclick="RestoreDatabase">
+        Restore Database
+    </button>
+}
+
+
+
+<br />
+<br />
+
+<h2>Receipt</h2>
+<div class="receipt-print-area"
+     style="
+    font-family:monospace;
+    box-shadow:0 4px 10px rgba(0,0,0,0.1);">
+
+    <h2 style="text-align:center;">
+        ASIAN STORE
+    </h2>
+
+    <hr />
+
+    <pre style="white-space:pre-wrap;
+    font-size:14px;">@receiptText</pre>
+
+</div>
+
+<br />
+
+    <button onclick="window.print()">
+    Print Receipt
+    </button>
+
+<br />
+<br />
+
+<h2>Sales History</h2>
+
+@if (UserRole == "Admin")
+{
+    <button @onclick="ClearSalesHistory">
+        Clear Sales History
+    </button>
+}
+
+<br />
+<br />
+
+<table border="1"
+       cellpadding="10"
+       style="border-collapse:collapse;
+    width:100%;">
+
+    <tr style="background-color:lightgreen;">
+
+        <th>Product</th>
+        <th>Qty</th>
+        <th>Total</th>
+        <th>Date</th>
+
+    </tr>
+
+    @foreach (var sale in salesHistory)
+    {
+        <tr>
+
+            <td>@sale.ProductName</td>
+
+            <td>@sale.Quantity</td>
+
+            <td>@sale.Total€</td>
+
+            <td>@sale.Date</td>
+
+        </tr>
+    }
+
+</table>
+
+@code {
+
+    
+
+    string productName = "";
+
+    string category = "";
+
+    string barcode = "";
+
+    string supplier = "";
+
+    int quantity = 0;
+
+    decimal price = 0;
+
+    string searchText = "";
+
+    string UserRole =>
+    UserSession.Role;
+
+    bool isEditing = false;
+
+    Product? selectedProduct;
+
+    decimal TotalSales = 0;
+
+    int TodaySalesCount = 0;
+
+    decimal TodayRevenue = 0;
+
+    string receiptText = "";
+
+    decimal CashReceived = 0;
+
+    decimal ChangeAmount = 0;
+
+    List<Product> products = new();
+
+    List<CartItem> cartItems = new();
+
+    List<Sale> salesHistory = new();
+
+    List<TopSeller> TopSellingProducts = new();
+
+    protected override void OnInitialized()
+    {
+
+        if (!UserSession.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+
+            return;
+        }
+
+
+        products = db.Products.ToList();
+
+        salesHistory = db.Sales.ToList();
+
+        TotalSales = salesHistory.Sum(s => s.Total);
+
+        var today = DateTime.Now.ToString("yyyy-MM-dd");
+
+        TodaySalesCount =
+            salesHistory.Count(s => s.Date.StartsWith(today));
+
+        TodayRevenue =
+            salesHistory
+                .Where(s => s.Date.StartsWith(today))
+                .Sum(s => s.Total);
+
+        LoadTopSellers();
+    }
+
+    void LoadTopSellers()
+    {
+        TopSellingProducts =
+            salesHistory
+                .GroupBy(s => s.ProductName)
+                .Select(g => new TopSeller
+                {
+                    ProductName = g.Key,
+                    TotalSold = g.Sum(x => x.Quantity)
+                })
+                .OrderByDescending(x => x.TotalSold)
+                .Take(5)
+                .ToList();
+    }
+
+    List<Product> filteredProducts =>
+        products.Where(p =>
+
+            p.Name.Contains(searchText,
+            StringComparison.OrdinalIgnoreCase)
+
+            ||
+
+            p.Barcode.Contains(searchText,
+            StringComparison.OrdinalIgnoreCase)
+
+            ||
+
+            p.Category.Contains(searchText,
+            StringComparison.OrdinalIgnoreCase)
+
+        ).ToList();
+
+    decimal TotalInventoryValue =>
+        products.Sum(p => p.Price * p.Quantity);
+
+    decimal CartTotal =>
+        cartItems.Sum(c => c.Price * c.Quantity);
+
+    void ScanBarcode()
+    {
+        var product = products.FirstOrDefault(p =>
+            p.Barcode == searchText);
+
+        if (product != null)
+        {
+            cartItems.Add(new CartItem
+            {
+                ProductName = product.Name,
+                Quantity = 1,
+                Price = product.Price
+            });
+
+            searchText = "";
+
+            StateHasChanged();
+        }
+    }
+
+    void AddOrUpdateProduct()
+    {
+        if (isEditing && selectedProduct != null)
+        {
+            selectedProduct.Name = productName;
+            selectedProduct.Barcode = barcode;
+            selectedProduct.Category = category;
+            selectedProduct.Supplier = supplier;
+            selectedProduct.Quantity = quantity;
+            selectedProduct.Price = price;
+
+            db.SaveChanges();
+
+            isEditing = false;
+
+            selectedProduct = null;
+        }
+        else
+        {
+            var product = new Product
+            {
+                Name = productName,
+                Barcode = barcode,
+                Category = category,
+                Supplier = supplier,
+                Quantity = quantity,
+                Price = price,
+                SellQuantity = 1
+            };
+
+            db.Products.Add(product);
+
+            db.SaveChanges();
+        }
+
+        products = db.Products.ToList();
+
+        productName = "";
+        category = "";
+        barcode = "";
+        supplier = "";
+        quantity = 0;
+        price = 0;
+    }
+
+    void AddToCart(Product item)
+    {
+        if (item.SellQuantity <= 0)
+            return;
+
+        var existingItem = cartItems
+            .FirstOrDefault(c => c.ProductName == item.Name);
+
+        int currentQuantity = existingItem?.Quantity ?? 0;
+
+        if (currentQuantity + item.SellQuantity > item.Quantity)
+            return;
+
+        if (existingItem != null)
+        {
+            existingItem.Quantity += item.SellQuantity;
+        }
+        else
+        {
+            cartItems.Add(new CartItem
+            {
+                ProductName = item.Name,
+                Quantity = item.SellQuantity,
+                Price = item.Price
+            });
+        }
+    }
+
+    void RemoveFromCart(CartItem item)
+    {
+        cartItems.Remove(item);
+    }
+
+    void ClearCart()
+    {
+        cartItems.Clear();
+
+        CashReceived = 0;
+
+        ChangeAmount = 0;
+
+        receiptText = "";
+    }
+
+    void Checkout()
+    {
+        decimal finalTotal = CartTotal;
+
+        if (finalTotal <= 0)
+        {
+            receiptText = "Cart is empty.";
+            ChangeAmount = 0;
+            return;
+        }
+
+        if (CashReceived < finalTotal)
+        {
+            receiptText = "Insufficient payment. Please enter enough cash.";
+            ChangeAmount = 0;
+            return;
+        }
+
+        ChangeAmount = CashReceived - finalTotal;
+
+        receiptText = "";
+
+        receiptText += "ASIAN STORE\n";
+
+        receiptText += "----------------------\n";
+
+        receiptText += DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+
+        receiptText += "\n\n";
+
+        foreach (var cart in cartItems)
+        {
+            var product = products.FirstOrDefault(p =>
+                p.Name == cart.ProductName);
+
+            if (product != null)
+            {
+                if (product.Quantity < cart.Quantity)
+                {
+                    receiptText =
+                        $"Not enough stock for {product.Name}";
+
+                    return;
+                }
+
+                product.Quantity -= cart.Quantity;
+            }
+
+            var sale = new Sale
+            {
+                ProductName = cart.ProductName,
+                Quantity = cart.Quantity,
+                Total = cart.Price * cart.Quantity,
+                Date = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+            };
+
+            db.Sales.Add(sale);
+
+            receiptText +=
+                $"{cart.ProductName} x{cart.Quantity} = {cart.Price * cart.Quantity}€\n";
+        }
+
+        receiptText += "\n----------------------\n";
+
+        receiptText += $"TOTAL: {finalTotal}€\n";
+
+        receiptText += $"CASH: {CashReceived}€\n";
+
+        receiptText += $"CHANGE: {ChangeAmount}€";
+
+        db.SaveChanges();
+
+        products = db.Products.ToList();
+
+        salesHistory = db.Sales.ToList();
+
+        TotalSales = salesHistory.Sum(s => s.Total);
+
+        var today = DateTime.Now.ToString("yyyy-MM-dd");
+
+        TodaySalesCount =
+            salesHistory.Count(s => s.Date.StartsWith(today));
+
+        TodayRevenue =
+            salesHistory
+                .Where(s => s.Date.StartsWith(today))
+                .Sum(s => s.Total);
+
+        LoadTopSellers();
+
+        cartItems.Clear();
+    }
+
+    void EditProduct(Product item)
+    {
+        productName = item.Name;
+        barcode = item.Barcode;
+        category = item.Category;
+        supplier = item.Supplier;
+        quantity = item.Quantity;
+        price = item.Price;
+
+        selectedProduct = item;
+
+        isEditing = true;
+    }
+
+    void RemoveProduct(Product item)
+    {
+        db.Products.Remove(item);
+
+        db.SaveChanges();
+
+        products = db.Products.ToList();
+    }
+
+    void ClearSalesHistory()
+    {
+        db.Sales.RemoveRange(db.Sales);
+
+        db.SaveChanges();
+
+        salesHistory = db.Sales.ToList();
+
+        TotalSales = 0;
+
+        TodaySalesCount = 0;
+
+        TodayRevenue = 0;
+
+        LoadTopSellers();
+    }
+
+    void BackupDatabase()
+    {
+        string source = "inventory.db";
+
+        string backupFolder = Path.Combine(
+            AppContext.BaseDirectory,
+            "Backup");
+
+        Directory.CreateDirectory(backupFolder);
+
+        string backupFile = Path.Combine(
+            backupFolder,
+            $"inventory_backup_{DateTime.Now:yyyyMMdd_HHmmss}.db");
+
+        File.Copy(source, backupFile, true);
+    }
+
+    void RestoreDatabase()
+    {
+        string backupFolder = Path.Combine(
+            AppContext.BaseDirectory,
+            "Backup");
+
+        if (!Directory.Exists(backupFolder))
+        {
+            receiptText = "No backup folder found.";
+            return;
+        }
+
+        string? latestBackup = Directory
+            .GetFiles(backupFolder, "*.db")
+            .OrderByDescending(File.GetLastWriteTime)
+            .FirstOrDefault();
+
+        if (latestBackup == null)
+        {
+            receiptText = "No backup database found.";
+            return;
+        }
+
+        File.Copy(
+            latestBackup,
+            Path.Combine(AppContext.BaseDirectory, "inventory.db"),
+            true);
+
+        products = db.Products.ToList();
+        salesHistory = db.Sales.ToList();
+
+        TotalSales = salesHistory.Sum(s => s.Total);
+
+        LoadTopSellers();
+
+        receiptText = "Database restored successfully.";
+    }
+
+    class TopSeller
+    {
+        public string ProductName { get; set; } = "";
+
+        public int TotalSold { get; set; }
+    }
+
+
+    class CartItem
+    {
+        public string ProductName { get; set; } = "";
+
+        public int Quantity { get; set; }
+
+        public decimal Price { get; set; }
+    }
+
+        void GoToDashboard()
+        {
+            Navigation.NavigateTo("/dashboard");
+        }
+
+        
+    void Logout()
+    {
+
+        UserSession.Role = "";
+        UserSession.IsLoggedIn = false;
+
+        Navigation.NavigateTo("/login", true);
+    }
+}
+
