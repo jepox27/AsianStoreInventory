@@ -77,3 +77,16 @@ This project was developed as a practical inventory and POS application demonstr
 
 GitHub: https://github.com/jepox27
 
+## Screenshots
+
+### Login
+![Login](screenshots/login.png)
+
+### Store Dashboard
+![Dashboard](screenshots/dashboard.png)
+
+### Admin Inventory & POS
+![Admin POS](screenshots/admin.png)
+
+### Cashier POS
+![POS](screenshots/pos.png)
