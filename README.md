@@ -1,4 +1,4 @@
-# Asian Store Inventory & POS System
+﻿# Asian Store Inventory & POS System
 
 A web-based inventory and point-of-sale (POS) system built with **C#**, **.NET**, **Blazor**, and **SQLite**.
 
