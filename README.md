@@ -80,13 +80,13 @@ GitHub: https://github.com/jepox27
 ## Screenshots
 
 ### Login
-![Login](screenshots/login.png)
+<img src="screenshots/login.png" width="700">
 
 ### Store Dashboard
-![Dashboard](screenshots/dashboard.png)
+<img src="screenshots/dashboard.png" width="900">
 
 ### Admin Inventory & POS
-![Admin POS](screenshots/admin.png)
+<img src="screenshots/admin.png" width="900">
 
 ### Cashier POS
-![POS](screenshots/pos.png)
+<img src="screenshots/pos.png" width="900">
